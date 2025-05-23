@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced D3.js Interactive Mindmap with Images</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #ECF0F1 0%, #D5DBDB 100%);
+            overflow: hidden;
+        }
+
+        .mindmap-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        .node {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .node:hover {
+            filter: brightness(1.05);
+        }
+
+        .node-rect {
+            stroke: white;
+            stroke-width: 2;
+            filter: drop-shadow(0 6px 12px rgba(44, 62, 80, 0.15));
+            transition: all 0.3s ease;
+        }
+
+        .node:hover .node-rect {
+            filter: drop-shadow(0 8px 16px rgba(44, 62, 80, 0.2));
+            transform: translateY(-1px);
+        }
+
+        .node-text {
+            font-weight: bold;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            pointer-events: none;
+            fill: white;
+            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+        }
+
+        .node-arrow {
+            font-size: 14px;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            pointer-events: none;
+            fill: white;
+            transition: all 0.2s ease;
+        }
+
+        .node-image {
+            cursor: pointer;
+            filter: drop-shadow(0 4px 8px rgba(44, 62, 80, 0.2));
+            transition: all 0.3s ease;
+        }
+
+        .node-image:hover {
+            filter: drop-shadow(0 6px 12px rgba(44, 62, 80, 0.3));
+            transform: scale(1.05);
+        }
+
+        .link {
+            stroke: #7F8C8D;
+            stroke-width: 2;
+            fill: none;
+            opacity: 0.8;
+            transition: all 0.3s ease;
+        }
+
+        .link-level3 {
+            stroke: #95A5A6;
+            stroke-width: 1.5;
+            opacity: 0.6;
+        }
+
+        .link-level4 {
+            stroke: #A9B7C0;
+            stroke-width: 1;
+            opacity: 0.5;
+        }
+
+        .zoom-controls {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .zoom-button {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid #BDC3C7;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 24px;
+            font-weight: bold;
+            color: #2C3E50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(44, 62, 80, 0.15);
+            backdrop-filter: blur(10px);
+        }
+
+        .zoom-button:hover {
+            background: white;
+            border-color: #34495E;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(44, 62, 80, 0.2);
+        }
+
+        .zoom-button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(44, 62, 80, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="mindmap-container">
+        <svg id="mindmap"></svg>
+        
+        <div class="zoom-controls">
+            <button class="zoom-button" onclick="zoomIn()" title="Zoom In">+</button>
+            <button class="zoom-button" onclick="zoomOut()" title="Zoom Out">−</button>
+        </div>
+    </div>
+
+    <script>
+        // Enhanced mindmap data with level 4 images
+        const mindmapData = {
+            root: "Central Topic",
+            level2: [
+                { id: "technology", label: "Technology", color: "#34495E" },
+                { id: "science", label: "Science", color: "#34495E" },
+                { id: "arts", label: "Arts", color: "#34495E" },
+                { id: "business", label: "Business", color: "#34495E" },
+                { id: "health", label: "Health", color: "#34495E" }
+            ],
+            level3: {
+                technology: ["AI & Machine Learning", "Web Development", "Mobile Apps", "Cybersecurity", "Data Science"],
+                science: ["Physics", "Biology", "Chemistry", "Mathematics", "Environmental Science"],
+                arts: ["Visual Arts", "Music", "Literature", "Theater", "Digital Art"],
+                business: ["Marketing", "Finance", "Operations", "Strategy", "Entrepreneurship"],
+                health: ["Nutrition", "Exercise", "Mental Health", "Medical Research", "Public Health"]
+            },
+            level4: {
+                // Technology images
+                "technology-0": ["ai_neural_network.png", "machine_learning_chart.png", "ai_robot.png"],
+                "technology-1": ["html_css_js.png", "react_framework.png", "nodejs_backend.png"],
+                "technology-2": ["mobile_ui.png", "app_development.png", "cross_platform.png"],
+                "technology-3": ["security_shield.png", "encryption_lock.png", "firewall_protection.png"],
+                "technology-4": ["data_visualization.png", "analytics_dashboard.png", "big_data.png"],
+                
+                // Science images
+                "science-0": ["quantum_physics.png", "particle_collision.png", "physics_equations.png"],
+                "science-1": ["dna_structure.png", "cell_biology.png", "ecosystem.png"],
+                "science-2": ["periodic_table.png", "chemical_reaction.png", "molecular_structure.png"],
+                "science-3": ["mathematical_formulas.png", "geometry_shapes.png", "calculus_graph.png"],
+                "science-4": ["climate_change.png", "renewable_energy.png", "environmental_protection.png"],
+                
+                // Arts images
+                "arts-0": ["painting_palette.png", "sculpture_art.png", "digital_design.png"],
+                "arts-1": ["musical_instruments.png", "sound_waves.png", "concert_performance.png"],
+                "arts-2": ["classic_books.png", "poetry_writing.png", "storytelling.png"],
+                "arts-3": ["theater_stage.png", "drama_masks.png", "performance_art.png"],
+                "arts-4": ["digital_artwork.png", "3d_modeling.png", "graphic_design.png"],
+                
+                // Business images
+                "business-0": ["marketing_strategy.png", "brand_development.png", "customer_analytics.png"],
+                "business-1": ["financial_charts.png", "investment_portfolio.png", "budget_planning.png"],
+                "business-2": ["process_optimization.png", "supply_chain.png", "quality_management.png"],
+                "business-3": ["strategic_planning.png", "market_analysis.png", "competitive_advantage.png"],
+                "business-4": ["startup_launch.png", "innovation_lab.png", "business_model.png"],
+                
+                // Health images
+                "health-0": ["healthy_food.png", "nutrition_pyramid.png", "vitamins_minerals.png"],
+                "health-1": ["fitness_training.png", "workout_routine.png", "sports_activities.png"],
+                "health-2": ["meditation_mindfulness.png", "brain_health.png", "stress_management.png"],
+                "health-3": ["medical_research.png", "laboratory_testing.png", "clinical_trials.png"],
+                "health-4": ["community_health.png", "vaccination_program.png", "health_education.png"]
+            }
+        };
+
+        // Set up SVG
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        const svg = d3.select("#mindmap")
+            .attr("width", width)
+            .attr("height", height);
+
+        // Create zoom behavior
+        const zoom = d3.zoom()
+            .scaleExtent([0.3, 3])
+            .on("zoom", (event) => {
+                container.attr("transform", event.transform);
+            });
+
+        svg.call(zoom);
+        const container = svg.append("g");
+
+        // Initialize data structures
+        let nodes = [];
+        let links = [];
+        let expandedNodes = new Set();
+
+        // Function to calculate text dimensions
+        function calculateTextDimensions(text, fontSize, fontFamily = 'Arial') {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            context.font = fontSize + 'px ' + fontFamily;
+            
+            const metrics = context.measureText(text);
+            const width = metrics.width;
+            const height = fontSize * 1.2;
+            
+            return { width: width, height: height };
+        }
+
+        // Function to calculate optimal block size
+        function calculateBlockSize(text, fontSize, level) {
+            const textDimensions = calculateTextDimensions(text, fontSize);
+            
+            let paddingX, paddingY, minWidth, minHeight;
+            
+            switch(level) {
+                case 'root':
+                    paddingX = 40;
+                    paddingY = 24;
+                    minWidth = 180;
+                    minHeight = 60;
+                    break;
+                case 'level2':
+                    paddingX = 32;
+                    paddingY = 20;
+                    minWidth = 160;
+                    minHeight = 50;
+                    break;
+                case 'level3':
+                    paddingX = 24;
+                    paddingY = 16;
+                    minWidth = 140;
+                    minHeight = 40;
+                    break;
+                case 'level4':
+                    // Level 4 nodes are images, so we use fixed dimensions
+                    return { width: 100, height: 100 };
+                default:
+                    paddingX = 24;
+                    paddingY = 16;
+                    minWidth = 140;
+                    minHeight = 40;
+            }
+            
+            const width = Math.max(minWidth, textDimensions.width + paddingX);
+            const height = Math.max(minHeight, textDimensions.height + paddingY);
+            
+            return { width: width, height: height };
+        }
+
+        // Create initial nodes with dynamic sizing
+        function createInitialData() {
+            const rootSize = calculateBlockSize(mindmapData.root, 18, 'root');
+            
+            nodes = [
+                {
+                    id: "root",
+                    label: mindmapData.root,
+                    level: "root",
+                    color: "#2C3E50",
+                    width: rootSize.width,
+                    height: rootSize.height,
+                    fontSize: 18,
+                    expandable: false,
+                    x: 150,
+                    y: height / 2,
+                    fx: 150,
+                    fy: height / 2
+                }
+            ];
+
+            const level2X = 350;
+            const level2Spacing = 600;
+            const startY = height / 2 - (mindmapData.level2.length - 1) * level2Spacing / 2;
+
+            mindmapData.level2.forEach((item, index) => {
+                const y = startY + index * level2Spacing;
+                const nodeSize = calculateBlockSize(item.label, 16, 'level2');
+                
+                nodes.push({
+                    id: item.id,
+                    label: item.label,
+                    level: "level2",
+                    color: "#34495E",
+                    width: nodeSize.width,
+                    height: nodeSize.height,
+                    fontSize: 16,
+                    expandable: true,
+                    expanded: false,
+                    x: level2X,
+                    y: y,
+                    fx: level2X,
+                    targetY: y
+                });
+            });
+
+            links = mindmapData.level2.map(item => ({
+                source: "root",
+                target: item.id,
+                distance: 200
+            }));
+        }
+
+        // Create calm force simulation
+        let simulation = d3.forceSimulation(nodes)
+            .force("link", d3.forceLink(links).id(d => d.id).distance(d => d.distance || 200))
+            .force("charge", d3.forceManyBody().strength(-200))
+            .force("y", d3.forceY().strength(0.1))
+            .force("collision", d3.forceCollide().radius(d => Math.max(d.width, d.height) / 2 + 10))
+            .alphaDecay(0.1)
+            .velocityDecay(0.9);
+
+        let link = container.append("g")
+            .attr("class", "links")
+            .selectAll("path");
+
+        let node = container.append("g")
+            .attr("class", "nodes")
+            .selectAll("g");
+
+        function update() {
+            link = link.data(links, d => {
+                const sourceId = typeof d.source === 'object' ? d.source.id : d.source;
+                const targetId = typeof d.target === 'object' ? d.target.id : d.target;
+                return sourceId + "-" + targetId;
+            });
+            
+            link.exit()
+                .transition()
+                .duration(300)
+                .style("opacity", 0)
+                .remove();
+            
+            const linkEnter = link.enter().append("path")
+                .attr("class", d => {
+                    if (d.level === "level4") return "link link-level4";
+                    if (d.level === "level3") return "link link-level3";
+                    return "link";
+                })
+                .style("opacity", 0);
+
+            link = linkEnter.merge(link);
+            
+            link.transition()
+                .duration(500)
+                .style("opacity", d => {
+                    if (d.level === "level4") return 0.5;
+                    if (d.level === "level3") return 0.6;
+                    return 0.8;
+                });
+
+            node = node.data(nodes, d => d.id);
+            node.exit()
+                .transition()
+                .duration(300)
+                .style("opacity", 0)
+                .remove();
+
+            const nodeEnter = node.enter().append("g")
+                .attr("class", "node")
+                .style("opacity", 0)
+                .call(d3.drag()
+                    .on("start", dragStarted)
+                    .on("drag", dragged)
+                    .on("end", dragEnded));
+
+            // Add rectangles for text nodes
+            nodeEnter.filter(d => d.level !== "level4")
+                .append("rect")
+                .attr("class", "node-rect")
+                .attr("width", d => d.width)
+                .attr("height", d => d.height)
+                .attr("x", d => -d.width / 2)
+                .attr("y", d => -d.height / 2)
+                .attr("rx", 12)
+                .attr("ry", 12)
+                .attr("fill", d => d.color)
+                .attr("stroke", "white")
+                .attr("stroke-width", 2);
+
+            // Add images for level 4 nodes
+            nodeEnter.filter(d => d.level === "level4")
+                .append("image")
+                .attr("class", "node-image")
+                .attr("width", d => d.width)
+                .attr("height", d => d.height)
+                .attr("x", d => -d.width / 2)
+                .attr("y", d => -d.height / 2)
+                .attr("href", d => d.imagePath)
+                .attr("rx", 8)
+                .attr("ry", 8)
+                .style("border-radius", "8px");
+
+            // Add text for non-level4 nodes
+            nodeEnter.filter(d => d.level !== "level4")
+                .append("text")
+                .attr("class", "node-text")
+                .attr("dy", d => d.expandable ? "-0.3em" : "0.1em")
+                .style("font-size", d => d.fontSize + "px")
+                .text(d => d.label);
+
+            // Add arrows for expandable nodes
+            nodeEnter.filter(d => d.expandable)
+                .append("text")
+                .attr("class", "node-arrow")
+                .attr("dy", "1.2em")
+                .style("font-size", "14px")
+                .text("▶");
+
+            node = nodeEnter.merge(node);
+
+            // Update rectangles
+            node.select(".node-rect")
+                .transition()
+                .duration(300)
+                .attr("width", d => d.width)
+                .attr("height", d => d.height)
+                .attr("x", d => -d.width / 2)
+                .attr("y", d => -d.height / 2)
+                .attr("fill", d => d.color);
+
+            // Update arrows
+            node.select(".node-arrow")
+                .transition()
+                .duration(300)
+                .text(d => d.expanded ? "▼" : "▶");
+
+            // Update images
+            node.select(".node-image")
+                .transition()
+                .duration(300)
+                .attr("href", d => d.imagePath);
+
+            node.transition()
+                .duration(500)
+                .style("opacity", 1);
+
+            node.on("click", handleNodeClick);
+
+            simulation.nodes(nodes);
+            simulation.force("link").links(links);
+            simulation.alpha(0.2).restart();
+        }
+
+        function handleNodeClick(event, d) {
+            if (!d.expandable) return;
+            event.stopPropagation();
+
+            if (d.expanded) {
+                collapseNode(d);
+            } else {
+                expandNode(d);
+            }
+        }
+
+        function expandNode(parentNode) {
+            parentNode.expanded = true;
+            expandedNodes.add(parentNode.id);
+
+            if (parentNode.level === "level2") {
+                expandLevel3Node(parentNode);
+            } else if (parentNode.level === "level3") {
+                expandLevel4Node(parentNode);
+            }
+        }
+
+        function expandLevel3Node(parentNode) {
+            const children = mindmapData.level3[parentNode.id];
+            if (!children) return;
+
+            const level3X = 550;
+            const verticalSpacing = 120;
+            const startY = parentNode.y - (children.length - 1) * verticalSpacing / 2;
+
+            children.forEach((childLabel, index) => {
+                const childId = parentNode.id + "-" + index;
+                const y = startY + index * verticalSpacing;
+                const nodeSize = calculateBlockSize(childLabel, 14, 'level3');
+
+                const childNode = {
+                    id: childId,
+                    label: childLabel,
+                    level: "level3",
+                    color: "#5D6D7E",
+                    width: nodeSize.width,
+                    height: nodeSize.height,
+                    fontSize: 14,
+                    expandable: true,
+                    expanded: false,
+                    x: level3X,
+                    y: y,
+                    fx: level3X,
+                    parent: parentNode.id
+                };
+
+                nodes.push(childNode);
+
+                links.push({
+                    source: parentNode.id,
+                    target: childId,
+                    distance: 200,
+                    level: "level3"
+                });
+            });
+
+            update();
+        }
+
+        function expandLevel4Node(parentNode) {
+            const images = mindmapData.level4[parentNode.id];
+            if (!images) return;
+
+            const level4X = 750;
+            const verticalSpacing = 120;
+            const startY = parentNode.y - (images.length - 1) * verticalSpacing / 2;
+
+            images.forEach((imageName, index) => {
+                const childId = parentNode.id + "-img-" + index;
+                const y = startY + index * verticalSpacing;
+                const nodeSize = calculateBlockSize("", 0, 'level4');
+
+                const imageNode = {
+                    id: childId,
+                    label: imageName,
+                    level: "level4",
+                    color: "#85929E",
+                    width: nodeSize.width,
+                    height: nodeSize.height,
+                    imagePath: imageName, // This will be the PNG file name
+                    expandable: false,
+                    x: level4X,
+                    y: y,
+                    fx: level4X,
+                    parent: parentNode.id
+                };
+
+                nodes.push(imageNode);
+
+                links.push({
+                    source: parentNode.id,
+                    target: childId,
+                    distance: 200,
+                    level: "level4"
+                });
+            });
+
+            update();
+        }
+
+        function collapseNode(parentNode) {
+            parentNode.expanded = false;
+            expandedNodes.delete(parentNode.id);
+
+            if (parentNode.level === "level2") {
+                collapseLevel3Node(parentNode);
+            } else if (parentNode.level === "level3") {
+                collapseLevel4Node(parentNode);
+            }
+        }
+
+        function collapseLevel3Node(parentNode) {
+            const children = mindmapData.level3[parentNode.id];
+            if (!children) return;
+
+            const childIds = children.map((_, index) => parentNode.id + "-" + index);
+            
+            // Also collapse any expanded level 4 nodes under these level 3 nodes
+            childIds.forEach(childId => {
+                const childNode = nodes.find(n => n.id === childId);
+                if (childNode && childNode.expanded) {
+                    collapseLevel4Node(childNode);
+                }
+            });
+
+            nodes = nodes.filter(n => !childIds.includes(n.id));
+            
+            links = links.filter(l => {
+                const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+                const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+                return !childIds.includes(sourceId) && !childIds.includes(targetId);
+            });
+
+            update();
+        }
+
+        function collapseLevel4Node(parentNode) {
+            const images = mindmapData.level4[parentNode.id];
+            if (!images) return;
+
+            const imageIds = images.map((_, index) => parentNode.id + "-img-" + index);
+
+            nodes = nodes.filter(n => !imageIds.includes(n.id));
+            
+            links = links.filter(l => {
+                const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+                const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+                return !imageIds.includes(sourceId) && !imageIds.includes(targetId);
+            });
+
+            update();
+        }
+
+        function dragStarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.05).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragged(event, d) {
+            if (d.level === "root") {
+                d.fy = event.y;
+            } else if (d.level === "level2") {
+                d.fx = 350;
+                d.fy = event.y;
+            } else if (d.level === "level3") {
+                d.fx = 550;
+                d.fy = event.y;
+            } else if (d.level === "level4") {
+                d.fx = 750;
+                d.fy = event.y;
+            }
+        }
+
+        function dragEnded(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            if (d.level === "root") {
+                d.fx = 150;
+            } else if (d.level === "level2") {
+                d.fx = 350;
+            } else if (d.level === "level3") {
+                d.fx = 550;
+            } else if (d.level === "level4") {
+                d.fx = 750;
+            }
+        }
+
+        simulation.on("tick", () => {
+            link.attr("d", d => {
+                const source = d.source;
+                const target = d.target;
+                
+                const dx = target.x - source.x;
+                const dy = target.y - source.y;
+                const dr = Math.abs(dx) * 0.3;
+                
+                const midX = source.x + dx * 0.5;
+                const controlX = midX;
+                const controlY = source.y;
+                
+                return "M" + source.x + "," + source.y + " Q" + controlX + "," + controlY + " " + midX + "," + ((source.y + target.y) / 2) + " Q" + (target.x - dr) + "," + target.y + " " + target.x + "," + target.y;
+            });
+
+            node.attr("transform", d => "translate(" + d.x + "," + d.y + ")");
+        });
+
+        function centerView() {
+            const transform = d3.zoomIdentity.translate(100, height / 2 - 200).scale(1);
+            svg.transition().duration(750).call(zoom.transform, transform);
+        }
+
+        function expandAll() {
+            nodes.filter(n => n.expandable && !n.expanded).forEach(expandNode);
+        }
+
+        function collapseAll() {
+            nodes.filter(n => n.expanded).forEach(collapseNode);
+        }
+
+        function zoomIn() {
+            svg.transition().duration(300).call(zoom.scaleBy, 1.3);
+        }
+
+        function zoomOut() {
+            svg.transition().duration(300).call(zoom.scaleBy, 1 / 1.3);
+        }
+
+        window.addEventListener('resize', () => {
+            const newWidth = window.innerWidth;
+            const newHeight = window.innerHeight;
+            
+            svg.attr("width", newWidth).attr("height", newHeight);
+            
+            const level2Spacing = 600;
+            const startY = newHeight / 2 - (mindmapData.level2.length - 1) * level2Spacing / 2;
+            
+            nodes.forEach((node, index) => {
+                if (node.level === "root") {
+                    node.fx = 150;
+                    node.fy = newHeight / 2;
+                } else if (node.level === "level2") {
+                    node.fx = 350;
+                    const level2Index = mindmapData.level2.findIndex(item => item.id === node.id);
+                    if (level2Index !== -1) {
+                        node.fy = startY + level2Index * level2Spacing;
+                    }
+                } else if (node.level === "level3") {
+                    node.fx = 550;
+                } else if (node.level === "level4") {
+                    node.fx = 750;
+                }
+            });
+            
+            simulation.alpha(0.1).restart();
+        });
+
+        createInitialData();
+        update();
+
+        document.addEventListener('keydown', (event) => {
+            switch(event.key.toLowerCase()) {
+                case 'c':
+                    centerView();
+                    break;
+                case 'e':
+                    expandAll();
+                    break;
+                case 'x':
+                    collapseAll();
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>
